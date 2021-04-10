@@ -116,6 +116,22 @@
     
   </div>
 
+  <div class="row justify-content-center">
+  <div id="chart2" class="single-col">
+      <h2>Evasão por curso (TOP 10)</h2>
+    </div>
+  </div>
+
+<div class="row justify-content-center">
+    <div class="col-8">
+
+      <p class="destaque">Lorem ipsum dolor sit amet, consectetur adipiscing elit. In tincidunt in libero sed viverra.</p>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. In tincidunt in libero sed viverra. Donec auctor, libero sed pharetra tincidunt, augue dui aliquet diam, nec aliquam sem dui id arcu. Quisque id sagittis felis, lobortis sagittis felis. Integer non bibendum turpis. Nulla neque ligula, fermentum ac nibh vitae, luctus viverra diam. Integer tortor leo, egestas ac orci in, condimentum suscipit augue. Ut pellentesque ipsum felis, sed hendrerit tortor rhoncus ut. Cras ornare dolor eget urna tincidunt pulvinar. Sed sed mauris maximus, rhoncus sem elementum, blandit quam. Vivamus vulputate aliquam dolor, sed ultricies ex rutrum nec.</p>
+    </div>
+    
+  </div>
+
+
   <div class="row">
     <div class="col align-self-start" id="origemescolar">
       <h2>Evasão por origem escolar</h2>
@@ -153,6 +169,7 @@
 
 <script type="text/javascript">
   let compositeChart = dc.compositeChart("#chart1");
+  let rowChart = dc.rowChart("#chart2");
   let chart = dc.barChart("#origemescolar");
   let lineChart = dc.lineChart("#evasaoporquantidade");
 
@@ -234,6 +251,32 @@
        return d => d.value[i];
       }
 
+      function reduceAddEvadidos2019(p, v) {
+        if((v.SITUACAO === 'Desistente' || v.SITUACAO === 'Transferido'))
+          ++p;
+        return p;
+      }
+
+      function reduceRemoveEvadidos2019(p, v) {
+        if((v.SITUACAO === 'Desistente' || v.SITUACAO === 'Transferido'))
+          --p;
+        return p;
+      }
+
+      function reduceInitialEvadidos2019() {
+        return 0;
+      }
+
+      function getTops(source_group, k) {
+    return {
+        all: function () {
+            return source_group.top(k);
+        }
+    };
+}
+
+
+
  
 
 
@@ -255,6 +298,10 @@
 
       let tempDimension = tempCrossfilter.dimension(function(d){
         return d.ANO_CENSO - d.ANO_INGRESSO;
+      });
+
+      let sitDim = facts.dimension(function(d){
+        return d.NO_CURSO;
       });
 
 
@@ -310,9 +357,13 @@
                   return 0;
                 });
 
+    let evasaoPorCursoGrupo2019 = sitDim.group().reduce(reduceAddEvadidos2019, reduceRemoveEvadidos2019, reduceInitialEvadidos2019);
+    let evasaoPorCursoGrupo2019Top10 = getTops(evasaoPorCursoGrupo2019, 10);
+
 
     // ESCALAS
     let xAnoEvasao = d3.scaleLinear().domain([2015 - 0.5, 2019 + 0.5]);
+    let xTotalEvasaoCurso = d3.scaleLinear().domain([0, evasaoPorCursoGrupo2019Top10.all()[0].value]);
 
 
 
@@ -396,6 +447,24 @@
   compositeChart.xAxis().ticks(5);
   compositeChart.xAxis().tickFormat(d3.format("d"));
   compositeChart.yAxis().tickFormat(d3.format("d"));
+
+
+  // ROW CHART
+  rowChart.width(900)
+          .height(400)
+          .dimension(sitDim)
+          .group(evasaoPorCursoGrupo2019Top10, "Curso")
+          .x(xTotalEvasaoCurso)
+          .elasticX(true)
+          .controlsUseVisibility(true)
+          .gap(5)
+          .ordinalColors(['#cdff62'])
+          .on("filtered", function(chart, filter) {
+              updateAllCharts();
+          });
+
+  rowChart.xAxis().tickFormat(d3.format("d"));
+
 
   
   

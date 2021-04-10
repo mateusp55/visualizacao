@@ -133,10 +133,10 @@
 
 
   <div class="row">
-    <div class="col align-self-start" id="origemescolar">
+    <div class="col align-self-start" id="chart3">
       <h2>Evasão por origem escolar</h2>
     </div>
-    <div class="col align-self-center" id="origemescolar">
+    <div class="col align-self-center" id="chart4">
       <h2>Evasão por gênero e faixa etária</h2>
     </div>
   </div>
@@ -151,7 +151,7 @@
 
 
   <div class="row justify-content-center">
-  <div id="evasaoporquantidade" class="single-col">
+  <div id="chart5" class="single-col">
       <h2>Evasão por quantidade de anos cursados</h2>
     </div>
   </div>
@@ -168,10 +168,11 @@
 </div>
 
 <script type="text/javascript">
-  let compositeChart = dc.compositeChart("#chart1");
-  let rowChart = dc.rowChart("#chart2");
-  let chart = dc.barChart("#origemescolar");
-  let lineChart = dc.lineChart("#evasaoporquantidade");
+  var compositeChart = dc.compositeChart("#chart1");
+  var rowChart = dc.rowChart("#chart2");
+  var chart = dc.barChart("#chart3");
+
+  var lineChart = dc.lineChart("#chart5");
 
   d3.csv('https://raw.githubusercontent.com/Fausto14/datavis/main/CENSO_2015_2019_UFC.csv').then( function (data) {
 
@@ -304,6 +305,10 @@
         return d.NO_CURSO;
       });
 
+      let generoDim = facts.dimension(function(d){
+        return d.SEXO;
+      });
+
 
     // GRUPOS
     let evadidosPorAnoGrupo = anoDim.group().reduce(reduceAddEvadidos, reduceRemoveEvadidos, reduceInitialEvadidos);
@@ -359,6 +364,67 @@
 
     let evasaoPorCursoGrupo2019 = sitDim.group().reduce(reduceAddEvadidos2019, reduceRemoveEvadidos2019, reduceInitialEvadidos2019);
     let evasaoPorCursoGrupo2019Top10 = getTops(evasaoPorCursoGrupo2019, 10);
+
+    let evasaoGeneroGrupo = anoDim.group().reduce((p, v) => {
+                    let ini = 16;
+                    let step = 3;
+                    let end = 49;
+                    let until = 0;
+                    for(var i=0; i<12; i++){
+                      if(v.SITUACAO === 'Desistente' || v.SITUACAO === 'Transferido'){
+                        until = ini+step-1;
+                        if(+v.IDADE >= ini && +v.IDADE <= until){
+                          p[i].grupo = ini+' a '+until;
+                          if(v.SEXO === 'Masculino') ++p[i].Masculino;
+                          if(v.SEXO === 'Feminino')  ++p[i].Feminino;
+                        }
+                        if(+v.IDADE > (end-1) && ini == end){
+                          p[i].grupo = '> '+(end-1);
+                          if(v.SEXO === 'Masculino') ++p[i].Masculino;
+                          if(v.SEXO === 'Feminino')  ++p[i].Feminino;
+                        }
+                        ini = ini + step;
+                      }
+                    }
+                    return p;
+                }, (p, v) => {
+                    let ini = 16;
+                    let step = 3;
+                    let end = 49;
+                    let until = 0;
+                    for(var i=0; i<12; i++){
+                      if(v.SITUACAO === 'Desistente' || v.SITUACAO === 'Transferido'){
+                        until = ini+step-1;
+                        if(+v.IDADE >= ini && +v.IDADE <= until){
+                          p[i].grupo = ini+' a '+until;
+                          if(v.SEXO === 'Masculino') --p[i].Masculino;
+                          if(v.SEXO === 'Feminino')  --p[i].Feminino;
+                        }
+                        if(+v.IDADE > (end-1) && ini == end){
+                          p[i].grupo = '> '+(end-1);
+                          if(v.SEXO === 'Masculino') --p[i].Masculino;
+                          if(v.SEXO === 'Feminino')  --p[i].Feminino;
+                        }
+                        ini = ini + step;
+                      }
+                    }
+                    return p;
+                }, () => {
+                  return [
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                    {grupo : '', Masculino : 0, Feminino : 0},
+                  ]
+                });
 
 
     // ESCALAS
@@ -423,7 +489,7 @@
                         $('#chart1 .bar').not(".selected").addClass('deselected');
                       }
                       
-                      let ano = e.target.firstChild.textContent.split(':')[0];
+                      let ano = e.x;
                       
                       if(ano === ano_sel){
                         ano = null;
@@ -513,8 +579,8 @@
                         $('#chart3 .bar').not(".selected").addClass('deselected');
                       }
                       
-                      let ano = e.target.firstChild.textContent.split(':')[0].trim();
-                      let escola = e.target.firstChild.textContent.split(':')[1].trim();
+                      let ano = e.x;
+                      let escola = e.layer;
                       console.log(escola)
                       
                       if(ano === ano_sel && escola === escola_sel){
@@ -548,6 +614,298 @@
         chart.xAxis().tickFormat(d3.format("d"));
         chart.yAxis().tickFormat(d3.format(".0%"));
         chart.ordinalColors(['DarkGray','darkorange','blue']);
+
+
+
+
+//PIRAMIDE 
+
+
+function transformDataPyramide(data, ano = null){
+  let saida = [];
+  var temp = [];
+
+  if(ano != null){
+    data.forEach(function (d,i) {
+      if(d.key == ano){
+        d.value.forEach(function (o,j) {
+          if(!temp[j]){
+            temp[j] = {grupo: o.grupo, Masculino: o.Masculino, Feminino: o.Feminino};
+          }
+          else{
+            temp[j].grupo = o.grupo;
+            temp[j].Masculino += o.Masculino;
+            temp[j].Feminino  += o.Feminino;
+          }
+        } ) 
+      }
+    })
+  }
+  else{
+    data.forEach(function (d,i) {
+      d.value.forEach(function (o,j) {
+        if(!temp[j]){
+          temp[j] = {grupo: o.grupo, Masculino: o.Masculino, Feminino: o.Feminino};
+        }
+        else{
+          temp[j].grupo = o.grupo;
+          temp[j].Masculino += o.Masculino;
+          temp[j].Feminino  += o.Feminino;
+        }
+      } )
+    })
+  }
+  return temp;
+}
+
+function pyramidChart(id, data){
+  // SET UP DIMENSIONS
+  var w = 600,
+      h = 300;
+      
+  // margin.middle is distance from center line to each y-axis
+  var margin = {
+    top: 50,
+    right: 20,
+    bottom: 80,
+    left: 20,
+    middle: 28
+  };
+      
+  // the width of each side of the chart
+  var regionWidth = w/2 - margin.middle;
+  
+  // these are the x-coordinates of the y-axes
+  var pointA = regionWidth,
+      pointB = w - regionWidth;
+
+  
+  // GET THE TOTAL POPULATION SIZE AND CREATE A FUNCTION FOR RETURNING THE PERCENTAGE
+  var totalPopulation = d3.sum(data, function(d) { return d.Masculino + d.Feminino; }),
+      percentage = function(d) { return d / totalPopulation; };
+
+  //remove svg old
+  d3.select(id).select("svg").remove();
+    
+  // CREATE SVG
+  var svg = d3.select(id).append('svg')
+    .attr('width', margin.left + w + margin.right)
+    .attr('height', margin.top + h + margin.bottom)
+    // ADD A GROUP FOR THE SPACE WITHIN THE MARGINS
+    .append('g')
+      .attr('transform', translation(margin.left, margin.top));
+  
+  // find the maximum data value on either side
+  //  since this will be shared by both of the x-axes
+  var maxValue = Math.max(
+    d3.max(data,  d => (d.Masculino)),
+    d3.max(data,  d => (d.Feminino)),
+  );
+  
+  // SET UP SCALES
+    
+  // the xScale goes from 0 to the width of a region
+  //  it will be reversed for the left x-axis
+  var xScale = d3.scaleLinear()
+    .domain([0, maxValue])
+    .rangeRound([0, regionWidth])
+    .nice();
+  
+  var xScaleLeft = d3.scaleLinear()
+    .domain([0, maxValue])
+    .range([regionWidth, 0]);
+  
+  var xScaleRight = d3.scaleLinear()
+    .domain([0, maxValue])
+    .range([0, regionWidth]);
+  
+  var yScale = d3.scaleBand()
+    .domain(data.map(d => d.grupo))
+    .rangeRound([h,0], 0.1).padding(0.2);
+  
+  
+  // SET UP AXES
+  var yAxisLeft = d3.axisRight(yScale)
+    .tickSize(6,0)
+    .tickPadding(margin.middle-6);
+  
+  var yAxisRight = d3.axisLeft(yScale)
+    .tickSize(6,0)
+    .tickFormat('');
+  
+  var xAxisRight = d3.axisBottom(xScale)
+    .ticks(5)
+    .tickFormat(d3.format('d'));
+
+  // REVERSE THE X-AXIS SCALE ON THE LEFT SIDE BY REVERSING THE RANGE
+  var xAxisLeft = d3.axisBottom(xScale.copy().range([pointA, 0]))
+    .ticks(5)
+    .tickFormat(d3.format('d'));
+  
+  // MAKE GROUPS FOR EACH SIDE OF CHART
+  // scale(-1,1) is used to reverse the left side so the bars grow left instead of right
+  var leftBarGroup = svg.append('g')
+    .attr('transform', translation(pointA, 0) + 'scale(-1,1)');
+  var rightBarGroup = svg.append('g')
+    .attr('transform', translation(pointB, 0));
+  
+  // DRAW AXES
+  svg.append('g')
+    .attr('class', 'axis y left')
+    .attr('transform', translation(pointA, 0))
+    .call(yAxisLeft)
+    .selectAll('text')
+    .style('font-size','10px')
+    .style('text-anchor', 'middle');
+  
+  svg.append('g')
+    .attr('class', 'axis y right')
+    .attr('transform', translation(pointB, 0))
+    .call(yAxisRight)
+    .append("text")
+    .attr("class", "axis-title")
+    .attr("y", -35)
+    .attr("dy", "1em")
+    .attr("dx", "8px")
+    .style('font-size','13px')
+    .style("text-anchor", "end")
+    .attr("fill", "#5D6971")
+    .text("Faixa Etária");
+  
+  svg.append('g')
+    .attr('class', 'axis x left')
+    .attr('transform', translation(0, h))
+    .call(xAxisLeft);
+  
+  svg.append('g')
+    .attr('class', 'axis x right')
+    .attr('transform', translation(pointB, h))
+    .call(xAxisRight)
+    .append("text")
+    .attr("class", "axis-title")
+    .attr("y", 40)
+    .attr("dy", "1em")
+    .attr("dx", "4em")
+    .style('font-size','12px')
+    .style("text-anchor", "end")
+    .attr("fill", "#5D6971")
+    .text("Quantidade de Evadidos");
+  
+  // DRAW BARS
+  leftBarGroup.selectAll('.bar.left')
+    .data(data)
+    .enter().append('rect')
+      .attr('class', 'bar left')
+      .attr("fill","steelblue")
+      .attr('x', 0)
+      .attr('y', d => yScale(d.grupo))
+      .attr('width', d => xScale((d.Masculino)))
+      .attr('height', yScale.bandwidth())
+    .on('mouseover', function (d,i){
+      //Dim all blobs
+      d3.selectAll(".bar.left")
+        .transition().duration(200)
+        .style("fill-opacity", 0.5); 
+      //Bring back the hovered over blob
+      d3.select(this)
+        .transition().duration(200)
+        .style("fill-opacity", 0.9);  
+    })
+    .on('mouseout', function(){
+      //Bring back all blobs
+      d3.selectAll(".bar.left")
+        .transition().duration(200)
+        .style("fill-opacity", 1);
+    })
+    .style('cursor','pointer')
+    .append('title')
+    .text((d,i) => d.grupo + " - Masculino : "+d.Masculino)
+    .style("font-size","16px");
+  
+  rightBarGroup.selectAll('.bar.right')
+    .data(data)
+    .enter().append('rect')
+      .attr('class', 'bar right')
+      .attr("fill","darkorange")
+      .attr('x', 0)
+      .attr('y', d => yScale(d.grupo))
+      .attr('width', d => xScale((d.Feminino)))
+      .attr('height', yScale.bandwidth())
+      .on('mouseover', function (d,i){
+      //Dim all blobs
+      d3.selectAll(".bar.right")
+        .transition().duration(200)
+        .style("fill-opacity", 0.5); 
+      //Bring back the hovered over blob
+      d3.select(this)
+        .transition().duration(200)
+        .style("fill-opacity", 0.9);  
+      })
+      .on('mouseout', function(){
+        //Bring back all blobs
+        d3.selectAll(".bar.right")
+          .transition().duration(200)
+          .style("fill-opacity", 1);
+      })
+      .style('cursor','pointer')
+      .append('title')
+      .text((d,i) => d.grupo + " - Feminino : "+d.Feminino)
+      .style("font-size","16px");
+
+  // exibindo as labels
+  // leftBarGroup.selectAll('text') // Seleciona todos os text filhos de svg (nesse caso, uma seleção vazia)
+  //   .data(data) // Vincula arrayOfNumbers com DOM elementos <text/>, produzindo seleções .enter(),.exit()
+  //   .enter()// Retorna a parte dos dados que é nova ("entering") e ainda não está vinculada aos elementos DOM
+  //     .append('text') // Para cada item de dado, adiciona um <text /> ao svg selecionado
+  //     .attr('x', d => (-1 * xScale(d.Masculino)) - (10 * xScale(d.Masculino).toString().length + 5)) 
+  //     .attr('y', (d, i) => yScale(d.grupo) + 13) // Configura a posição y de cada rótulo
+  //     .attr("fill","steelblue")
+  //     .style('font-family','Arial')
+  //     .style('text-anchor','right')
+  //     .style('font-size','13px')
+  //     .style('font-weight','bold')
+  //     .text(d => d.Masculino)
+  //     .attr('transform', translation(0, 0) + 'scale(-1,1)');
+
+
+  // rightBarGroup.selectAll('text') // Seleciona todos os text filhos de svg (nesse caso, uma seleção vazia)
+  //   .data(data) // Vincula arrayOfNumbers com DOM elementos <text/>, produzindo seleções .enter(),.exit()
+  //   .enter()// Retorna a parte dos dados que é nova ("entering") e ainda não está vinculada aos elementos DOM
+  //     .append('text') // Para cada item de dado, adiciona um <text /> ao svg selecionado
+  //     .attr('x', d => xScale(d.Feminino) + 5) // Configura a posição x de acordo com o índice do vetor
+  //     .attr('y', (d, i) => yScale(d.grupo) + 13) // Configura a posição y de cada rótulo
+  //     .attr("fill","darkorange")
+  //     .style('font-family','Arial')
+  //     .style('text-anchor','right')
+  //     .style('font-size','13px')
+  //     .style('font-weight','bold')
+  //     .text(d => d.Feminino);
+  
+  
+  // so sick of string concatenation for translations
+  function translation(x,y) {
+    return 'translate(' + x + ',' + y + ')';
+  }
+
+  svg.append("rect").attr("x",w - 100).attr("y",-40).attr("width", 10).attr("height", 10).style("fill", "steelblue");
+  svg.append("rect").attr("x",w - 100).attr("y",-25).attr("width", 10).attr("height", 10).style("fill", "darkorange");
+  svg.append("text").attr("x",w - 80).attr("y", -35).text("Masculino").style("font-size", "14px").attr("alignment-baseline","middle")
+  svg.append("text").attr("x",w - 80).attr("y", -20).text("Feminino").style("font-size", "14px").attr("alignment-baseline","middle")
+
+}
+
+
+function updatePyramidChart(ano = null) {
+  let dados = transformDataPyramide(evasaoGeneroGrupo.all(), ano)
+  pyramidChart('#chart4', dados)
+}
+
+  let dados = transformDataPyramide(evasaoGeneroGrupo.all())
+  pyramidChart("#chart4", dados);
+
+
+
+
 
 
 

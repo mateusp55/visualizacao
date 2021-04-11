@@ -83,9 +83,9 @@
         height: 480px;
         z-index: -50;
       }
-      h4 span {
-        font-size:14px;
-        font-weight:normal;
+      .dc-chart g.row text {
+        fill: black;
+        font-weight: bold;
       }
 
     </style>
@@ -95,6 +95,7 @@
   <div class="bg"></div>
 
   <main role="main" class="container">
+    <div class="detalhe"><img src="detalhe.png"></div>
     
     <div class="row">
       <h1> Evasão na Universidade Federal do Ceará</h1>
@@ -156,6 +157,20 @@
     </div>
   </div>
 
+  <div class="row justify-content-center">
+  <div class="col-8">
+
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. In tincidunt in libero sed viverra. Donec auctor, libero sed pharetra tincidunt, augue dui aliquet diam, nec aliquam sem dui id arcu. Quisque id sagittis felis, lobortis sagittis felis. Integer non bibendum turpis. Nulla neque ligula, fermentum ac nibh vitae, luctus viverra diam. Integer tortor leo, egestas ac orci in, condimentum suscipit augue. Ut pellentesque ipsum felis, sed hendrerit tortor rhoncus ut. Cras ornare dolor eget urna tincidunt pulvinar. Sed sed mauris maximus, rhoncus sem elementum, blandit quam. Vivamus vulputate aliquam dolor, sed ultricies ex rutrum nec.</p>
+    </div>
+  </div>
+
+
+  <div class="row justify-content-center">
+  <div id="mapid" class="single-col">
+      <h2>Evasão por polo</h2>
+    </div>
+  </div>
+
   
 
 
@@ -171,7 +186,6 @@
   var compositeChart = dc.compositeChart("#chart1");
   var rowChart = dc.rowChart("#chart2");
   var chart = dc.barChart("#chart3");
-
   var lineChart = dc.lineChart("#chart5");
 
   d3.csv('https://raw.githubusercontent.com/Fausto14/datavis/main/CENSO_2015_2019_UFC.csv').then( function (data) {
@@ -309,6 +323,11 @@
         return d.SEXO;
       });
 
+      let poloDim = facts.dimension(function(d){
+        return d.MUNICIPIO_LOCAL_OFERTA;
+      });
+
+
 
     // GRUPOS
     let evadidosPorAnoGrupo = anoDim.group().reduce(reduceAddEvadidos, reduceRemoveEvadidos, reduceInitialEvadidos);
@@ -425,6 +444,8 @@
                     {grupo : '', Masculino : 0, Feminino : 0},
                   ]
                 });
+
+    let poloGrupo = poloDim.group().reduce(reduceAddEvadidos, reduceRemoveEvadidos, reduceInitialEvadidos);
 
 
     // ESCALAS
@@ -613,7 +634,7 @@
         chart.xAxis().ticks(5);
         chart.xAxis().tickFormat(d3.format("d"));
         chart.yAxis().tickFormat(d3.format(".0%"));
-        chart.ordinalColors(['DarkGray','darkorange','blue']);
+        chart.ordinalColors(['DarkGray','blue','#cdff62']);
 
 
 
@@ -769,7 +790,7 @@ function pyramidChart(id, data){
     .attr("dx", "8px")
     .style('font-size','13px')
     .style("text-anchor", "end")
-    .attr("fill", "#5D6971")
+    .attr("fill", "#5D6971 ")
     .text("Faixa Etária");
   
   svg.append('g')
@@ -796,7 +817,7 @@ function pyramidChart(id, data){
     .data(data)
     .enter().append('rect')
       .attr('class', 'bar left')
-      .attr("fill","steelblue")
+      .attr("fill","blue")
       .attr('x', 0)
       .attr('y', d => yScale(d.grupo))
       .attr('width', d => xScale((d.Masculino)))
@@ -826,7 +847,7 @@ function pyramidChart(id, data){
     .data(data)
     .enter().append('rect')
       .attr('class', 'bar right')
-      .attr("fill","darkorange")
+      .attr("fill","#cdff62")
       .attr('x', 0)
       .attr('y', d => yScale(d.grupo))
       .attr('width', d => xScale((d.Feminino)))
@@ -887,8 +908,8 @@ function pyramidChart(id, data){
     return 'translate(' + x + ',' + y + ')';
   }
 
-  svg.append("rect").attr("x",w - 100).attr("y",-40).attr("width", 10).attr("height", 10).style("fill", "steelblue");
-  svg.append("rect").attr("x",w - 100).attr("y",-25).attr("width", 10).attr("height", 10).style("fill", "darkorange");
+  svg.append("rect").attr("x",w - 100).attr("y",-40).attr("width", 10).attr("height", 10).style("fill", "blue");
+  svg.append("rect").attr("x",w - 100).attr("y",-25).attr("width", 10).attr("height", 10).style("fill", "#cdff62");
   svg.append("text").attr("x",w - 80).attr("y", -35).text("Masculino").style("font-size", "14px").attr("alignment-baseline","middle")
   svg.append("text").attr("x",w - 80).attr("y", -20).text("Feminino").style("font-size", "14px").attr("alignment-baseline","middle")
 
@@ -932,7 +953,7 @@ function updatePyramidChart(ano = null) {
           .on('renderlet', function (chart) {
                     chart.selectAll('.line')
                     .style('fill', 'none')
-                    .style('stroke-width','1px');
+                    .style('stroke-width','2px');
                 })
           .on("filtered", function(chart, filter) {
               updateMarkers();
